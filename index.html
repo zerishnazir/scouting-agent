@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Startup Scout</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#fff; --bg2:#f7f7f5; --bg3:#eeecea; --text:#1a1a1a; --text2:#6b6b6b; --text3:#9a9a9a;
+  --border:rgba(0,0,0,0.12); --border2:rgba(0,0,0,0.22); --r:8px; --rl:12px; --accent:#534AB7;
+  --pur-bg:#EEEDFE; --pur-t:#3C3489; --grn-bg:#EAF3DE; --grn-t:#3B6D11;
+  --blu-bg:#E6F1FB; --blu-t:#185FA5; --amb-bg:#FAEEDA; --amb-t:#854F0B;
+  --red-bg:#FCEBEB; --red-t:#A32D2D; --gry-bg:#F1EFE8; --gry-t:#5F5E5A;
+}
+@media (prefers-color-scheme:dark) {
+  :root {
+    --bg:#1c1c1e; --bg2:#2c2c2e; --bg3:#3a3a3c; --text:#f2f2f7; --text2:#aeaeb2; --text3:#6c6c70;
+    --border:rgba(255,255,255,.10); --border2:rgba(255,255,255,.20);
+    --pur-bg:#26215C; --pur-t:#CECBF6; --grn-bg:#173404; --grn-t:#C0DD97;
+    --blu-bg:#042C53; --blu-t:#B5D4F4; --amb-bg:#412402; --amb-t:#FAC775;
+    --red-bg:#501313; --red-t:#F7C1C1; --gry-bg:#2C2C2A; --gry-t:#B4B2A9;
+  }
+}
+html { font-size:15px; }
+body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; line-height:1.5; }
+.app { max-width:820px; margin:0 auto; padding:2rem 1.25rem 4rem; }
+h1 { font-size:22px; font-weight:600; letter-spacing:-.3px; }
+.subtitle { font-size:13px; color:var(--text2); margin-top:4px; margin-bottom:2rem; }
+
+/* Tabs */
+.tabs { display:flex; gap:0; border-bottom:0.5px solid var(--border2); margin-bottom:1.5rem; }
+.tab { padding:8px 18px; font-size:13px; font-weight:500; cursor:pointer; color:var(--text2); border:none; background:none; font-family:inherit; border-bottom:2px solid transparent; margin-bottom:-0.5px; }
+.tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+
+/* Cards */
+.section { background:var(--bg2); border:0.5px solid var(--border); border-radius:var(--rl); padding:1.25rem; margin-bottom:1rem; }
+.section-title { font-size:12px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.07em; margin-bottom:1rem; }
+
+/* Form */
+.field { margin-bottom:12px; }
+.field:last-child { margin-bottom:0; }
+.label { font-size:11px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.07em; margin-bottom:5px; display:block; }
+input[type=text], input[type=password], textarea, select {
+  width:100%; background:var(--bg); color:var(--text);
+  border:0.5px solid var(--border2); border-radius:var(--r);
+  padding:9px 12px; font-size:14px; font-family:inherit;
+}
+input:focus, textarea:focus, select:focus { outline:none; border-color:var(--accent); }
+textarea { resize:vertical; min-height:80px; }
+.row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+
+/* Geo tags */
+.geo-row { display:flex; gap:8px; }
+.geo-row input { flex:1; }
+.geo-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.geo-tag { font-size:12px; padding:3px 10px; border-radius:20px; background:var(--pur-bg); color:var(--pur-t); cursor:pointer; }
+.geo-tag:hover { opacity:.8; }
+.chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.chip { font-size:12px; padding:3px 10px; background:var(--bg3); color:var(--text2); border:0.5px solid var(--border); border-radius:20px; cursor:pointer; font-family:inherit; }
+.chip:hover { background:var(--bg2); }
+
+/* File upload */
+.upload-zone { border:1.5px dashed var(--border2); border-radius:var(--r); padding:24px; text-align:center; cursor:pointer; transition:border-color .15s; }
+.upload-zone:hover, .upload-zone.drag { border-color:var(--accent); }
+.upload-zone p { font-size:13px; color:var(--text2); margin-top:4px; }
+.upload-zone strong { font-size:14px; color:var(--text); }
+.file-info { background:var(--grn-bg); color:var(--grn-t); border-radius:var(--r); padding:10px 14px; font-size:13px; margin-top:8px; display:flex; align-items:center; justify-content:space-between; }
+.file-preview { margin-top:10px; overflow-x:auto; }
+.file-preview table { border-collapse:collapse; font-size:12px; width:100%; }
+.file-preview th { background:var(--bg3); color:var(--text2); padding:5px 10px; text-align:left; border:0.5px solid var(--border); white-space:nowrap; }
+.file-preview td { padding:5px 10px; border:0.5px solid var(--border); color:var(--text); }
+.file-preview tr:nth-child(even) td { background:var(--bg2); }
+.col-map { margin-top:10px; }
+.col-map-row { display:grid; grid-template-columns:140px 1fr; gap:8px; align-items:center; margin-bottom:6px; font-size:13px; color:var(--text2); }
+.col-map-row select { font-size:12px; padding:5px 8px; }
+
+/* API section */
+.api-provider { display:grid; grid-template-columns:140px 1fr; gap:10px; align-items:center; margin-bottom:10px; font-size:13px; }
+.api-badge { font-size:11px; padding:2px 8px; border-radius:20px; background:var(--amb-bg); color:var(--amb-t); margin-left:6px; }
+.api-note { font-size:12px; color:var(--text3); margin-top:4px; }
+
+/* Buttons */
+.btn { display:inline-flex; align-items:center; gap:7px; padding:9px 18px; border:0.5px solid var(--border2); border-radius:var(--r); font-size:13px; font-weight:500; cursor:pointer; font-family:inherit; background:var(--bg); color:var(--text); }
+.btn:hover { background:var(--bg2); }
+.btn:active { transform:scale(.98); }
+.btn.primary { background:var(--accent); color:#fff; border-color:transparent; font-size:14px; padding:10px 22px; }
+.btn.primary:hover { opacity:.88; }
+.btn.primary:disabled { opacity:.4; cursor:not-allowed; }
+.btn.danger { color:var(--red-t); border-color:var(--red-t); }
+.action-row { display:flex; gap:10px; flex-wrap:wrap; margin-top:1rem; align-items:center; }
+
+/* Status */
+.status { background:var(--bg2); border:0.5px solid var(--border); border-radius:var(--r); padding:12px 16px; margin-bottom:1rem; font-size:13px; color:var(--text2); display:flex; align-items:center; gap:10px; }
+.spinner { width:16px; height:16px; border:2px solid var(--border2); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; flex-shrink:0; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.progress-steps { display:flex; gap:6px; flex-wrap:wrap; }
+.ps { font-size:11px; padding:2px 8px; border-radius:20px; background:var(--bg3); color:var(--text3); }
+.ps.active { background:var(--blu-bg); color:var(--blu-t); }
+.ps.done { background:var(--grn-bg); color:var(--grn-t); }
+.error { background:var(--red-bg); color:var(--red-t); border-radius:var(--r); padding:12px 14px; font-size:13px; margin-bottom:1rem; }
+
+/* Summary */
+.summary-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(100px,1fr)); gap:10px; margin-bottom:1.25rem; }
+.summary-card { background:var(--bg2); border-radius:var(--r); padding:12px 10px; text-align:center; border:0.5px solid var(--border); }
+.summary-num { font-size:24px; font-weight:600; }
+.summary-lbl { font-size:11px; color:var(--text2); margin-top:2px; }
+.sc-5 .summary-num { color:var(--grn-t); }
+.sc-4 .summary-num { color:var(--blu-t); }
+.sc-3 .summary-num { color:var(--amb-t); }
+.sc-2 .summary-num { color:var(--red-t); }
+.sc-1 .summary-num { color:var(--gry-t); }
+.sc-total .summary-num { color:var(--accent); }
+
+/* Sources pills */
+.sources-row { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+.src-pill { font-size:11px; padding:3px 10px; border-radius:20px; border:0.5px solid var(--border); color:var(--text2); }
+.src-pill.web { background:var(--blu-bg); color:var(--blu-t); border-color:transparent; }
+.src-pill.file { background:var(--pur-bg); color:var(--pur-t); border-color:transparent; }
+.src-pill.api { background:var(--amb-bg); color:var(--amb-t); border-color:transparent; }
+
+/* Results */
+.results-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:12px; padding-bottom:10px; border-bottom:0.5px solid var(--border); }
+.results-meta { font-size:13px; color:var(--text2); }
+.export-row { display:flex; gap:8px; }
+.result-card { background:var(--bg); border:0.5px solid var(--border); border-radius:var(--rl); padding:1.1rem 1.25rem; margin-bottom:10px; }
+.rc-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; }
+.rc-name { font-weight:600; font-size:15px; }
+.rc-url { font-size:12px; color:var(--blu-t); text-decoration:none; }
+.rc-url:hover { text-decoration:underline; }
+.sc-badge { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:14px; flex-shrink:0; margin-left:12px; }
+.sc-lbl { font-size:10px; text-align:center; margin-top:2px; color:var(--text3); white-space:nowrap; }
+.b5 { background:var(--grn-bg); color:var(--grn-t); } .b4 { background:var(--blu-bg); color:var(--blu-t); }
+.b3 { background:var(--amb-bg); color:var(--amb-t); } .b2 { background:var(--red-bg); color:var(--red-t); }
+.b1 { background:var(--gry-bg); color:var(--gry-t); }
+.rc-desc { font-size:13px; color:var(--text2); margin-bottom:8px; line-height:1.55; }
+.pills { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:8px; }
+.pill { font-size:11px; padding:3px 9px; border-radius:20px; background:var(--bg2); color:var(--text2); }
+.pill-geo { background:var(--pur-bg); color:var(--pur-t); }
+.pill-src { background:var(--amb-bg); color:var(--amb-t); }
+.product-box { background:var(--bg2); border-radius:var(--r); padding:9px 12px; font-size:13px; line-height:1.6; }
+
+/* Memory */
+.memory-sec { margin-top:1.5rem; padding-top:1rem; border-top:0.5px solid var(--border); }
+.mem-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.mem-title { font-size:13px; font-weight:500; }
+.mem-cnt { font-size:12px; color:var(--text2); background:var(--bg2); padding:2px 8px; border-radius:20px; }
+.mem-item { font-size:12px; color:var(--text2); padding:5px 0; border-bottom:0.5px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.mem-item:last-child { border-bottom:none; }
+.mem-name { font-weight:500; color:var(--text); }
+.del-btn { background:none; border:none; cursor:pointer; color:var(--text3); font-size:15px; padding:0 4px; font-family:inherit; }
+.del-btn:hover { color:var(--red-t); }
+.copy-ok { display:none; font-size:12px; color:var(--grn-t); margin-left:6px; }
+
+@media (max-width:560px) { .row2,.row3 { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Startup Scout</h1>
+  <p class="subtitle">Discover, research, and score startups — web search · Word brief · file upload · database APIs · memory</p>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('brief')">Brief & Filters</button>
+    <button class="tab" onclick="switchTab('file')">File Upload</button>
+    <button class="tab" onclick="switchTab('api')">Database APIs</button>
+    <button class="tab" onclick="switchTab('llm')">⚙ LLM Settings</button>
+  </div>
+
+  <!-- TAB 1: Brief -->
+  <div class="tab-panel active" id="tab-brief">
+    <div class="section">
+      <div class="section-title">Scouting brief</div>
+
+      <!-- Word doc upload -->
+      <div class="field">
+        <label class="label">Upload brief document <span style="font-size:11px;font-weight:400;color:var(--text3);text-transform:none;letter-spacing:0;">(optional — .docx Word file)</span></label>
+        <div class="upload-zone" id="briefUploadZone" style="padding:16px 20px;display:flex;align-items:center;gap:14px;text-align:left;" onclick="document.getElementById('briefDocInput').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleBriefDrop(event)">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--text3)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <div>
+            <strong style="font-size:14px;">Drop your Word document here</strong>
+            <p style="font-size:12px;color:var(--text2);margin-top:2px;">Upload a .docx file with your use-case, brief, or investment thesis — the agent will parse it and auto-fill the fields below.</p>
+          </div>
+          <input type="file" id="briefDocInput" accept=".docx" style="display:none" onchange="handleBriefDoc(this.files[0])" />
+        </div>
+        <div id="briefDocInfo" style="display:none;"></div>
+        <div id="briefDocParsed" style="display:none;background:var(--grn-bg);border-radius:var(--r);padding:10px 14px;margin-top:8px;font-size:13px;color:var(--grn-t);line-height:1.6;"></div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;margin:4px 0 12px;"><div style="flex:1;height:0.5px;background:var(--border);"></div><span style="font-size:11px;color:var(--text3);white-space:nowrap;">or fill in manually</span><div style="flex:1;height:0.5px;background:var(--border);"></div></div>
+
+      <div class="field">
+        <label class="label">Sectors</label>
+        <input type="text" id="sectors" placeholder="e.g. Fintech, AI infrastructure, Climate tech" />
+      </div>
+      <div class="field">
+        <label class="label">Problem statement / investment thesis</label>
+        <textarea id="brief" placeholder="Describe the problem you're trying to solve, the investment thesis, or what kind of startups you're looking for. The more specific, the better."></textarea>
+      </div>
+      <div class="field">
+        <label class="label">Geography</label>
+        <div class="geo-row">
+          <input type="text" id="geoInput" placeholder="Type a region and press Enter…" onkeydown="if(event.key==='Enter'){event.preventDefault();addGeo();}" />
+          <button class="btn" onclick="addGeo()">+ Add</button>
+        </div>
+        <div class="chips">
+          <span style="font-size:12px;color:var(--text3);margin-right:2px;">Quick:</span>
+          <button class="chip" onclick="quickGeo('Southeast Asia')">Southeast Asia</button>
+          <button class="chip" onclick="quickGeo('India')">India</button>
+          <button class="chip" onclick="quickGeo('USA')">USA</button>
+          <button class="chip" onclick="quickGeo('Europe')">Europe</button>
+          <button class="chip" onclick="quickGeo('MENA')">MENA</button>
+          <button class="chip" onclick="quickGeo('LATAM')">LATAM</button>
+          <button class="chip" onclick="quickGeo('Global')">Global</button>
+        </div>
+        <div class="geo-tags" id="geoTags"></div>
+      </div>
+      <div class="row3">
+        <div class="field" style="margin-bottom:0">
+          <label class="label">Funding stage</label>
+          <select id="stage">
+            <option value="any">Any stage</option>
+            <option value="Pre-seed">Pre-seed</option>
+            <option value="Seed">Seed</option>
+            <option value="Series A">Series A</option>
+            <option value="Series B">Series B</option>
+            <option value="Series B+">Series B+</option>
+          </select>
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label class="label">Results per run</label>
+          <select id="count">
+            <option value="10">10 startups</option>
+            <option value="20">20 startups</option>
+            <option value="30">30 startups</option>
+            <option value="50">50 startups</option>
+          </select>
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label class="label">Sort by</label>
+          <select id="sortBy">
+            <option value="score">Fit score</option>
+            <option value="funding">Total funding</option>
+            <option value="employees">Team size</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: File Upload -->
+  <div class="tab-panel" id="tab-file">
+    <div class="section">
+      <div class="section-title">Upload startup list</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Upload a CSV or Excel file containing a list of startups. The agent will review each company and score them against your brief. Accepted columns: company name, website, description, location, founder, employees, stage, funding.</p>
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event)">
+        <strong>Click to upload or drag & drop</strong>
+        <p>CSV, .xlsx, or .xls — max 5 MB</p>
+        <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFile(this.files[0])" />
+      </div>
+      <div id="fileInfo" style="display:none"></div>
+      <div id="colMap" class="col-map" style="display:none">
+        <p style="font-size:12px;color:var(--text2);margin-bottom:8px;">Map your columns to the expected fields (leave blank to skip):</p>
+        <div id="colMapRows"></div>
+      </div>
+      <div id="filePreview" class="file-preview" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- TAB 3: Database APIs -->
+  <div class="tab-panel" id="tab-api">
+    <div class="section">
+      <div class="section-title">Startup database integrations</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">Enter your API keys for startup databases. The agent will query these sources in addition to web search. Keys are stored only in your browser.</p>
+
+      <div class="field">
+        <label class="label">Crunchbase <span class="api-badge">REST API</span></label>
+        <input type="password" id="crunchbase_key" placeholder="Crunchbase API key" autocomplete="off" />
+        <p class="api-note">Get your key at <a href="https://www.crunchbase.com/account/api" target="_blank" style="color:var(--blu-t)">crunchbase.com/account/api</a> — Basic plan supports company search.</p>
+      </div>
+
+      <div class="field">
+        <label class="label">Dealroom <span class="api-badge">REST API</span></label>
+        <input type="password" id="dealroom_key" placeholder="Dealroom API key" autocomplete="off" />
+        <p class="api-note">Available on Dealroom Pro/Enterprise plans at <a href="https://dealroom.co" target="_blank" style="color:var(--blu-t)">dealroom.co</a>.</p>
+      </div>
+
+      <div class="field">
+        <label class="label">Tracxn <span class="api-badge">REST API</span></label>
+        <input type="password" id="tracxn_key" placeholder="Tracxn API key" autocomplete="off" />
+        <p class="api-note">Available on Tracxn Standard/Enterprise plans at <a href="https://tracxn.com" target="_blank" style="color:var(--blu-t)">tracxn.com</a>.</p>
+      </div>
+
+      <div class="field">
+        <label class="label">PitchBook <span class="api-badge">REST API</span></label>
+        <input type="password" id="pitchbook_key" placeholder="PitchBook API key" autocomplete="off" />
+        <p class="api-note">Available on PitchBook Enterprise licenses at <a href="https://pitchbook.com" target="_blank" style="color:var(--blu-t)">pitchbook.com</a>.</p>
+      </div>
+
+      <button class="btn" onclick="saveApiKeys()" style="margin-top:4px;">Save keys to browser</button>
+      <span id="keysSaved" style="display:none;font-size:12px;color:var(--grn-t);margin-left:10px;">✓ Saved</span>
+    </div>
+  </div>
+
+  <!-- TAB 4: LLM Settings -->
+  <div class="tab-panel" id="tab-llm">
+    <div class="section">
+      <div class="section-title">LLM provider</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">Choose your LLM provider and enter your API key. The tool runs entirely in your browser — your key is stored locally and never sent to any server other than the provider you select.</p>
+
+      <div class="field">
+        <label class="label">Provider</label>
+        <select id="llm_provider" onchange="onProviderChange()">
+          <option value="anthropic">Anthropic (Claude)</option>
+          <option value="openai">OpenAI (GPT-4o)</option>
+          <option value="gemini">Google Gemini</option>
+          <option value="openai_compat">OpenAI-compatible endpoint (Groq, Together, Mistral, etc.)</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label class="label">API Key</label>
+        <input type="password" id="llm_key" placeholder="Paste your API key here" autocomplete="off" />
+        <p class="api-note" id="llm_key_note">Get your key at <a href="https://console.anthropic.com" target="_blank" style="color:var(--blu-t)">console.anthropic.com</a></p>
+      </div>
+
+      <div class="field" id="llm_model_field">
+        <label class="label">Model</label>
+        <select id="llm_model">
+          <option value="claude-sonnet-4-6">claude-sonnet-4-6 (recommended)</option>
+          <option value="claude-opus-4-6">claude-opus-4-6 (most capable)</option>
+          <option value="claude-haiku-4-5-20251001">claude-haiku-4-5-20251001 (fastest)</option>
+        </select>
+      </div>
+
+      <div class="field" id="llm_base_url_field" style="display:none;">
+        <label class="label">Base URL <span style="font-size:11px;font-weight:400;color:var(--text3);text-transform:none;">(OpenAI-compatible endpoint)</span></label>
+        <input type="text" id="llm_base_url" placeholder="e.g. https://api.groq.com/openai/v1" />
+        <p class="api-note">Must expose <code>/chat/completions</code>. Works with Groq, Together AI, Mistral, Ollama (local), LM Studio, and others.</p>
+      </div>
+
+      <div class="field" id="llm_custom_model_field" style="display:none;">
+        <label class="label">Model name</label>
+        <input type="text" id="llm_custom_model" placeholder="e.g. llama-3.3-70b-versatile, mistral-large-latest" />
+      </div>
+
+      <div style="background:var(--amb-bg);border-radius:var(--r);padding:10px 14px;font-size:12px;color:var(--amb-t);margin-top:4px;line-height:1.6;">
+        <strong>Two-agent pipeline:</strong> The <strong>Search Agent</strong> discovers startups using web search (requires a provider that supports tool/function calling, or falls back to prompt-based search). The <strong>Scoring Agent</strong> then independently evaluates each company against your brief and assigns a 1–5 fit score.
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;margin-top:12px;">
+        <button class="btn" onclick="saveLLMSettings()">Save settings</button>
+        <button class="btn" onclick="testLLM()">Test connection</button>
+        <span id="llmTestResult" style="font-size:12px;display:none;"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action row always visible -->
+  <div class="action-row" style="margin-top:0;">
+    <button class="btn primary" id="scoutBtn" onclick="runScouting()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      Scout startups
+    </button>
+    <button class="btn" onclick="startNewBrief()" id="newBriefBtn" style="display:none;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      Start new brief
+    </button>
+    <button class="btn danger" onclick="clearMemory()" id="clearMemBtn" style="display:none;">Clear memory</button>
+  </div>
+
+  <div style="height:12px;"></div>
+  <div id="statusBar" style="display:none;"></div>
+  <div id="errorBox" style="display:none;"></div>
+
+  <!-- Summary -->
+  <div id="summarySection" style="display:none;">
+    <div class="section" style="margin-bottom:1rem;">
+      <div class="section-title">Scouting summary</div>
+      <div class="summary-grid" id="summaryGrid"></div>
+      <div class="sources-row" id="sourcesRow"></div>
+      <p id="summaryText" style="font-size:13px;color:var(--text2);line-height:1.6;"></p>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="resultsSection" style="display:none;">
+    <div class="results-header">
+      <span class="results-meta" id="resultsMeta"></span>
+      <div class="export-row">
+        <button class="btn" onclick="copyTSV()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="12" height="14" rx="2"/><path d="M4 22h12a2 2 0 0 0 2-2V8"/></svg>
+          Copy for Sheets <span class="copy-ok" id="copyOk">✓ Copied!</span>
+        </button>
+        <button class="btn" onclick="downloadCSV()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download CSV
+        </button>
+      </div>
+    </div>
+    <div id="cards"></div>
+  </div>
+
+  <!-- Memory -->
+  <div id="memorySection" class="memory-sec" style="display:none;">
+    <div class="mem-hdr">
+      <span class="mem-title">Previously scouted (excluded from future runs)</span>
+      <span class="mem-cnt" id="memCount">0</span>
+    </div>
+    <div id="memoryList"></div>
+  </div>
+</div>
+
+<script>
+// ── Proxy configuration ──────────────────────────────────────────
+// Set PROXY_URL to your Render proxy URL to enable team mode.
+// When set, users don't need to enter any API key.
+// Leave as empty string '' to require users to enter their own key.
+const PROXY_URL = 'https://scouting-agent.onrender.com';
+// ─────────────────────────────────────────────────────────────────
+
+const PROXY_MODE = PROXY_URL.trim() !== '';
+const MEM_KEY = 'scout_mem_v2';
+const KEY_KEY = 'scout_api_keys_v1';
+const SCORE_LABELS = ['','Poor fit','Weak fit','Moderate fit','Strong fit','Excellent fit'];
+
+let geoList = [];
+let currentResults = [];
+let uploadedRows = [];
+let uploadedFileName = '';
+let colMapping = {};
+let memory = loadMemory();
+
+/* ── Tabs ── */
+function switchTab(id) {
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['brief','file','api','llm'][i]===id));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+}
+
+/* ── Memory ── */
+function loadMemory() { try { return JSON.parse(localStorage.getItem(MEM_KEY)||'[]'); } catch { return []; } }
+function saveMemory() { try { localStorage.setItem(MEM_KEY, JSON.stringify(memory)); } catch {} }
+function getMemoryNames() { return memory.map(m=>m.name.toLowerCase().trim()); }
+
+/* ── API Keys ── */
+function saveApiKeys() {
+  const keys = { crunchbase: document.getElementById('crunchbase_key').value.trim(), dealroom: document.getElementById('dealroom_key').value.trim(), tracxn: document.getElementById('tracxn_key').value.trim(), pitchbook: document.getElementById('pitchbook_key').value.trim() };
+  try { localStorage.setItem(KEY_KEY, JSON.stringify(keys)); } catch {}
+  const s = document.getElementById('keysSaved');
+  s.style.display='inline'; setTimeout(()=>s.style.display='none', 2000);
+}
+function loadApiKeys() {
+  try {
+    const k = JSON.parse(localStorage.getItem(KEY_KEY)||'{}');
+    if (k.crunchbase) document.getElementById('crunchbase_key').value = k.crunchbase;
+    if (k.dealroom) document.getElementById('dealroom_key').value = k.dealroom;
+    if (k.tracxn) document.getElementById('tracxn_key').value = k.tracxn;
+    if (k.pitchbook) document.getElementById('pitchbook_key').value = k.pitchbook;
+  } catch {}
+}
+function getActiveKeys() {
+  try {
+    const k = JSON.parse(localStorage.getItem(KEY_KEY)||'{}');
+    return Object.fromEntries(Object.entries(k).filter(([,v])=>v));
+  } catch { return {}; }
+}
+
+/* ── Geo ── */
+function addGeo() { const i=document.getElementById('geoInput'); const v=i.value.trim(); if(v&&!geoList.includes(v)){geoList.push(v);renderGeoTags();} i.value=''; }
+function quickGeo(r) { if(!geoList.includes(r)){geoList.push(r);renderGeoTags();} }
+function removeGeo(i) { geoList.splice(i,1); renderGeoTags(); }
+function renderGeoTags() { document.getElementById('geoTags').innerHTML=geoList.map((g,i)=>`<span class="geo-tag" onclick="removeGeo(${i})">${g} ✕</span>`).join(''); }
+
+/* ── File Upload ── */
+function handleDrop(e) { e.preventDefault(); document.getElementById('uploadZone').classList.remove('drag'); handleFile(e.dataTransfer.files[0]); }
+function handleFile(file) {
+  if (!file) return;
+  if (file.size > 5*1024*1024) { alert('File too large. Max 5 MB.'); return; }
+  uploadedFileName = file.name;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      let rows;
+      if (file.name.endsWith('.csv')) {
+        const text = e.target.result;
+        rows = parseCSV(text);
+      } else {
+        const wb = XLSX.read(e.target.result, {type:'array'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+      }
+      if (!rows.length) { alert('No data found in file.'); return; }
+      uploadedRows = rows;
+      showFileInfo(file.name, rows);
+    } catch(err) { alert('Could not read file: ' + err.message); }
+  };
+  if (file.name.endsWith('.csv')) reader.readAsText(file);
+  else reader.readAsArrayBuffer(file);
+}
+function parseCSV(text) {
+  const lines = text.trim().split(/\r?\n/);
+  const headers = lines[0].split(',').map(h=>h.replace(/^"|"$/g,'').trim());
+  return lines.slice(1).map(line => {
+    const vals = line.split(',').map(v=>v.replace(/^"|"$/g,'').trim());
+    return Object.fromEntries(headers.map((h,i)=>[h, vals[i]||'']));
+  }).filter(r=>Object.values(r).some(v=>v));
+}
+function showFileInfo(name, rows) {
+  const headers = Object.keys(rows[0]);
+  document.getElementById('fileInfo').style.display='block';
+  document.getElementById('fileInfo').innerHTML=`<div class="file-info"><span>📄 <strong>${name}</strong> — ${rows.length} rows, ${headers.length} columns</span><button class="del-btn" onclick="clearFile()">✕</button></div>`;
+  // Column mapping
+  const fieldNames = ['Name','Website','Description','Location','Founder','Employees','Stage','Funding'];
+  const mapEl = document.getElementById('colMapRows');
+  mapEl.innerHTML = fieldNames.map(f => `<div class="col-map-row"><span>${f}</span><select id="map_${f}" onchange="colMapping['${f}']=this.value"><option value="">— skip —</option>${headers.map(h=>`<option value="${h}" ${h.toLowerCase().includes(f.toLowerCase())||f.toLowerCase().includes(h.toLowerCase().replace(/\s/g,''))?'selected':''}>${h}</option>`).join('')}</select></div>`).join('');
+  document.getElementById('colMap').style.display='block';
+  // Auto-set mapping
+  fieldNames.forEach(f=>{ const el=document.getElementById('map_'+f); colMapping[f]=el.value; });
+  // Preview first 5 rows
+  const prev = document.getElementById('filePreview');
+  prev.style.display='block';
+  prev.innerHTML=`<table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.slice(0,5).map(r=>`<tr>${headers.map(h=>`<td>${String(r[h]||'').slice(0,40)}</td>`).join('')}</tr>`).join('')}</tbody></table><p style="font-size:11px;color:var(--text3);margin-top:4px;">Showing first 5 of ${rows.length} rows</p>`;
+}
+function clearFile() {
+  uploadedRows=[]; uploadedFileName=''; colMapping={};
+  document.getElementById('fileInfo').style.display='none';
+  document.getElementById('colMap').style.display='none';
+  document.getElementById('filePreview').style.display='none';
+  document.getElementById('fileInput').value='';
+}
+function getFileStartups() {
+  if (!uploadedRows.length) return [];
+  return uploadedRows.map(r => ({
+    name: r[colMapping['Name']]||'',
+    website: r[colMapping['Website']]||'',
+    description: r[colMapping['Description']]||'',
+    location: r[colMapping['Location']]||'',
+    founder: r[colMapping['Founder']]||'',
+    employees: r[colMapping['Employees']]||'',
+    stage: r[colMapping['Stage']]||'',
+    funding: r[colMapping['Funding']]||'',
+    _source: 'file'
+  })).filter(s=>s.name);
+}
+
+/* ── Word Document Brief Parsing ── */
+function handleBriefDrop(e) {
+  e.preventDefault();
+  document.getElementById('briefUploadZone').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) handleBriefDoc(file);
+}
+
+async function handleBriefDoc(file) {
+  if (!file) return;
+  if (!file.name.endsWith('.docx')) { alert('Please upload a .docx Word file.'); return; }
+  if (file.size > 10*1024*1024) { alert('File too large. Max 10 MB.'); return; }
+
+  const zone = document.getElementById('briefUploadZone');
+  zone.innerHTML = '<div class="spinner"></div><span style="font-size:13px;color:var(--text2);">Parsing document…</span>';
+
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    const rawText = result.value.trim();
+
+    if (!rawText || rawText.length < 30) {
+      throw new Error('Document appears to be empty or could not be read.');
+    }
+
+    // Call LLM to extract structured fields from the brief
+    const extractPrompt = `You are a startup scouting assistant. A user has uploaded a Word document containing a scouting brief or use-case document. Extract the following structured information from it:
+
+1. sectors: What industry sectors or technology areas is this about? (comma-separated list)
+2. brief: The core problem statement or investment thesis — summarise in 3-5 sentences if long
+3. geography: Any geographic focus mentioned (countries, regions) — comma-separated, or "Global" if none
+
+Document content:
+---
+${rawText.slice(0, 6000)}
+---
+
+Respond ONLY with a raw JSON object, no markdown:
+{"sectors":"...","brief":"...","geography":"..."}`;
+
+    const text = await callLLM(extractPrompt, 800);
+    const clean = text.replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(clean.match(/\{[\s\S]*\}/)[0]);
+
+    // Auto-fill fields
+    if (parsed.sectors) document.getElementById('sectors').value = parsed.sectors;
+    if (parsed.brief) document.getElementById('brief').value = parsed.brief;
+    if (parsed.geography && parsed.geography.toLowerCase() !== 'global' && parsed.geography.trim()) {
+      geoList = [];
+      parsed.geography.split(',').map(g=>g.trim()).filter(Boolean).forEach(g => { if(!geoList.includes(g)) geoList.push(g); });
+      renderGeoTags();
+    }
+
+    // Restore upload zone
+    zone.innerHTML = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--grn-t)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 11 12 14 15 11"/><line x1="12" y1="14" x2="12" y2="8"/></svg><div style="flex:1"><strong style="font-size:14px;color:var(--grn-t);">✓ ${file.name}</strong><p style="font-size:12px;color:var(--text2);margin-top:2px;">Brief parsed and fields auto-filled below. <button onclick="clearBriefDoc()" style="background:none;border:none;color:var(--blu-t);cursor:pointer;font-family:inherit;font-size:12px;padding:0;">Remove</button></p></div>`;
+
+    // Show parsed preview
+    const parsedEl = document.getElementById('briefDocParsed');
+    parsedEl.style.display = 'block';
+    parsedEl.innerHTML = `<strong>Extracted from document:</strong><br>Sectors: ${parsed.sectors || '—'}<br>Geography: ${parsed.geography || 'Global'}<br>Brief: ${(parsed.brief||'').slice(0,200)}${(parsed.brief||'').length>200?'…':''}`;
+
+  } catch(err) {
+    zone.innerHTML = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--red-t)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg><div><strong style="color:var(--red-t);">Could not parse document</strong><p style="font-size:12px;color:var(--text2);">${err.message} — please fill in the fields manually below. <button onclick="resetBriefZone()" style="background:none;border:none;color:var(--blu-t);cursor:pointer;font-family:inherit;font-size:12px;padding:0;">Try again</button></p></div>`;
+  }
+}
+
+function clearBriefDoc() {
+  resetBriefZone();
+  document.getElementById('briefDocParsed').style.display='none';
+  document.getElementById('briefDocInput').value='';
+}
+
+function resetBriefZone() {
+  const zone = document.getElementById('briefUploadZone');
+  zone.innerHTML = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--text3)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg><div><strong style="font-size:14px;">Drop your Word document here</strong><p style="font-size:12px;color:var(--text2);margin-top:2px;">Upload a .docx file with your use-case, brief, or investment thesis — the agent will parse it and auto-fill the fields below.</p></div><input type="file" id="briefDocInput" accept=".docx" style="display:none" onchange="handleBriefDoc(this.files[0])" />`;
+  zone.onclick = () => document.getElementById('briefDocInput').click();
+}
+
+/* ── Utilities ── */
+function parseFunding(s) { if(!s)return 0; const c=s.replace(/,/g,'').toUpperCase(); const m=c.match(/([\d.]+)\s*([KMBT]?)/); if(!m)return 0; return parseFloat(m[1])*({B:1e9,M:1e6,K:1e3}[m[2]]||1); }
+function parseEmp(s) { if(!s)return 0; const m=s.match(/(\d+)/); return m?parseInt(m[1]):0; }
+function setStatus(html, spin) { const b=document.getElementById('statusBar'); b.style.display='flex'; b.innerHTML=(spin?'<div class="spinner"></div>':'')+html; }
+function hideStatus() { document.getElementById('statusBar').style.display='none'; }
+function showError(msg) { const b=document.getElementById('errorBox'); b.style.display='block'; b.innerHTML=`<strong>Error:</strong> ${msg}`; }
+function hideError() { document.getElementById('errorBox').style.display='none'; }
+
+/* ── API helpers ── */
+async function queryCrunchbase(key, sectors, geoClause, excludeNames) {
+  // Crunchbase Basic: search organizations by keyword
+  const query = [sectors, geoClause !== 'Global' ? geoClause : ''].filter(Boolean).join(' ');
+  try {
+    const resp = await fetch(`https://api.crunchbase.com/api/v4/searches/organizations?user_key=${key}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ field_ids:['identifier','short_description','location_identifiers','founded_on','funding_total','last_funding_type','num_employees_enum','website_url'], query:[{type:'predicate',field_id:'facet_ids',operator_id:'includes',values:['company']},{type:'predicate',field_id:'short_description',operator_id:'contains',values:[sectors.split(',')[0].trim()]}], limit:25, order:[{field_id:'rank_org',sort:'asc'}] })
+    });
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    return (data.entities||[])
+      .filter(e => !excludeNames.includes((e.properties?.identifier?.value||'').toLowerCase()))
+      .map(e => ({
+        name: e.properties?.identifier?.value||'',
+        website: e.properties?.website_url||'',
+        description: e.properties?.short_description||'',
+        location: (e.properties?.location_identifiers||[]).map(l=>l.value).join(', '),
+        founder:'', employees: e.properties?.num_employees_enum||'',
+        stage: e.properties?.last_funding_type||'',
+        funding: e.properties?.funding_total?.value_usd ? '$'+Math.round(e.properties.funding_total.value_usd/1e6)+'M' : '',
+        product_details:'', score:0, _source:'crunchbase'
+      })).filter(s=>s.name);
+  } catch { return []; }
+}
+
+async function queryTracxn(key, sectors, geoClause) {
+  try {
+    const resp = await fetch('https://tracxn.com/api/2.1/company/feedsByTechnology/', {
+      method:'POST', headers:{'Content-Type':'application/json','accessToken':key},
+      body: JSON.stringify({ technology: sectors.split(',')[0].trim(), location: geoClause !== 'Global' ? geoClause : undefined, pageNum:0, resultPerPage:20 })
+    });
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    return (data.result||[]).map(c=>({
+      name:c.name||'', website:c.website||'', description:c.description||'',
+      location:c.location||'', founder:c.founders?.join(', ')||'',
+      employees:c.employeeCount||'', stage:c.latestFundingRound||'',
+      funding:c.totalFunding||'', product_details:'', score:0, _source:'tracxn'
+    })).filter(s=>s.name);
+  } catch { return []; }
+}
+
+/* ── LLM Settings ── */
+const LLM_KEY = 'scout_llm_v1';
+const MODEL_OPTIONS = {
+  anthropic: ['claude-sonnet-4-6','claude-opus-4-6','claude-haiku-4-5-20251001'],
+  openai: ['gpt-4o','gpt-4o-mini','gpt-4-turbo','gpt-3.5-turbo'],
+  gemini: ['gemini-1.5-pro','gemini-1.5-flash','gemini-2.0-flash'],
+  openai_compat: []
+};
+
+function onProviderChange() {
+  const p = document.getElementById('llm_provider').value;
+  const notes = {
+    anthropic: 'Get your key at <a href="https://console.anthropic.com" target="_blank" style="color:var(--blu-t)">console.anthropic.com</a>',
+    openai: 'Get your key at <a href="https://platform.openai.com/api-keys" target="_blank" style="color:var(--blu-t)">platform.openai.com/api-keys</a>',
+    gemini: 'Get your key at <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--blu-t)">aistudio.google.com</a>',
+    openai_compat: 'Enter the API key for your chosen provider (Groq, Together, Mistral, etc.)'
+  };
+  document.getElementById('llm_key_note').innerHTML = notes[p] || '';
+  const modelSel = document.getElementById('llm_model');
+  const models = MODEL_OPTIONS[p] || [];
+  modelSel.innerHTML = models.map(m=>`<option value="${m}">${m}</option>`).join('');
+  document.getElementById('llm_model_field').style.display = p === 'openai_compat' ? 'none' : 'block';
+  document.getElementById('llm_base_url_field').style.display = p === 'openai_compat' ? 'block' : 'none';
+  document.getElementById('llm_custom_model_field').style.display = p === 'openai_compat' ? 'block' : 'none';
+}
+
+function saveLLMSettings() {
+  const s = getLLMConfig();
+  try { localStorage.setItem(LLM_KEY, JSON.stringify(s)); } catch {}
+  const r = document.getElementById('llmTestResult');
+  r.style.display='inline'; r.style.color='var(--grn-t)'; r.textContent='✓ Saved';
+  setTimeout(()=>r.style.display='none', 2000);
+}
+
+function loadLLMSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem(LLM_KEY)||'{}');
+    if (s.provider) document.getElementById('llm_provider').value = s.provider;
+    onProviderChange();
+    if (s.key) document.getElementById('llm_key').value = s.key;
+    if (s.model) document.getElementById('llm_model').value = s.model;
+    if (s.base_url) document.getElementById('llm_base_url').value = s.base_url;
+    if (s.custom_model) document.getElementById('llm_custom_model').value = s.custom_model;
+  } catch {}
+}
+
+function getLLMConfig() {
+  const p = document.getElementById('llm_provider').value;
+  return {
+    provider: p,
+    key: document.getElementById('llm_key').value.trim(),
+    model: p === 'openai_compat' ? document.getElementById('llm_custom_model').value.trim() : document.getElementById('llm_model').value,
+    base_url: document.getElementById('llm_base_url').value.trim()
+  };
+}
+
+async function testLLM() {
+  const r = document.getElementById('llmTestResult');
+  r.style.display='inline'; r.style.color='var(--text2)'; r.textContent='Testing…';
+  try {
+    await callLLM('Reply with just the word: OK', 50);
+    r.style.color='var(--grn-t)'; r.textContent='✓ Connection successful';
+  } catch(e) {
+    r.style.color='var(--red-t)'; r.textContent='✗ ' + e.message.slice(0,80);
+  }
+}
+
+/* ── Grounded search call (proxy mode only) — real web search + page fetching ── */
+async function callLLMGrounded(query, instruction, maxTokens=4000) {
+  if (!PROXY_MODE) {
+    // No proxy = no server-side search capability. Fall back to plain LLM call.
+    return callLLM(instruction, maxTokens);
+  }
+  const endpoint = PROXY_URL.replace(/\/$/, '') + '/v1/search-and-complete';
+  const resp = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, instruction, max_tokens: maxTokens, num_results: 8, fetch_pages: true })
+  });
+  const responseText = await resp.text();
+  if (!resp.ok) throw new Error(`Search proxy error ${resp.status}: ${responseText.slice(0,300)}`);
+  const d = JSON.parse(responseText);
+  if (d.error) throw new Error(d.error);
+  return d.choices?.[0]?.message?.content || '';
+}
+
+/* ── LLM-agnostic call ── */
+async function callLLM(prompt, maxTokens=4000) {
+  // Proxy mode — route through server, no key needed in browser
+  if (PROXY_MODE) {
+    const endpoint = PROXY_URL.replace(/\/$/, '') + '/v1/chat/completions';
+    console.log('[Scout] Calling proxy:', endpoint);
+    const resp = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        max_tokens: maxTokens,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const responseText = await resp.text();
+    console.log('[Scout] Proxy response status:', resp.status, responseText.slice(0, 200));
+    if (!resp.ok) throw new Error(`Proxy error ${resp.status}: ${responseText.slice(0,300)}`);
+    const d = JSON.parse(responseText);
+    if (d.error) throw new Error(d.error.message || JSON.stringify(d.error));
+    return d.choices?.[0]?.message?.content || '';
+  }
+
+  // Self-serve mode — user's own API key
+  const cfg = getLLMConfig();
+  if (!cfg.key) throw new Error('No API key set. Go to ⚙ LLM Settings and enter your key.');
+
+  if (cfg.provider === 'anthropic') {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':cfg.key,'anthropic-version':'2023-06-01'},
+      body: JSON.stringify({ model: cfg.model||'claude-sonnet-4-6', max_tokens: maxTokens, messages:[{role:'user',content:prompt}] })
+    });
+    if (!resp.ok) { const t=await resp.text(); throw new Error(`Anthropic ${resp.status}: ${t.slice(0,200)}`); }
+    const d = await resp.json();
+    if (d.error) throw new Error(d.error.message||JSON.stringify(d.error));
+    return (d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+  }
+
+  if (cfg.provider === 'gemini') {
+    const model = cfg.model||'gemini-1.5-pro';
+    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cfg.key}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ contents:[{parts:[{text:prompt}]}], generationConfig:{maxOutputTokens:maxTokens} })
+    });
+    if (!resp.ok) { const t=await resp.text(); throw new Error(`Gemini ${resp.status}: ${t.slice(0,200)}`); }
+    const d = await resp.json();
+    if (d.error) throw new Error(d.error.message||JSON.stringify(d.error));
+    return d.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  }
+
+  // OpenAI or OpenAI-compatible
+  const baseUrl = cfg.provider==='openai_compat' ? cfg.base_url : 'https://api.openai.com/v1';
+  if (!baseUrl) throw new Error('Base URL is required for OpenAI-compatible providers.');
+  const resp = await fetch(`${baseUrl.replace(/\/$/,'')}/chat/completions`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':`Bearer ${cfg.key}`},
+    body: JSON.stringify({ model: cfg.model||'gpt-4o', max_tokens: maxTokens, messages:[{role:'user',content:prompt}] })
+  });
+  if (!resp.ok) { const t=await resp.text(); throw new Error(`LLM ${resp.status}: ${t.slice(0,200)}`); }
+  const d = await resp.json();
+  if (d.error) throw new Error(d.error.message||JSON.stringify(d.error));
+  return d.choices?.[0]?.message?.content || '';
+}
+
+function extractJSON(text) {
+  const cleaned = text.replace(/```json|```/g,'').trim();
+  const arrMatch = cleaned.match(/\[[\s\S]*\]/);
+  if (arrMatch) return JSON.parse(arrMatch[0]);
+  const objMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (objMatch) return JSON.parse(objMatch[0]);
+  throw new Error('No JSON found in LLM response. Raw: ' + text.slice(0,300));
+}
+
+/* ═══════════════════════════════════════════
+   AGENT 1 — SEARCH AGENT (two-step)
+   Step 1: Recall candidates from LLM training knowledge
+   Step 2: Verify each candidate against first 8 pages of Google
+═══════════════════════════════════════════ */
+
+/* ── Step 1: Pure LLM recall — no search grounding, taps training knowledge broadly ── */
+async function recallFromTrainingData(sectors, brief, stage, geoClause, count, excludeNames) {
+  const geo = geoList.length ? `GEOGRAPHY: Focus on startups in: ${geoClause}.` : 'GEOGRAPHY: Global.';
+  const excl = excludeNames.length ? `\nDo not include these (already seen): ${excludeNames.slice(0,50).join(', ')}` : '';
+  const prompt = `You are a startup scouting analyst recalling companies from your knowledge. Based on everything you know, list real startup companies relevant to this brief.
+
+SECTORS: ${sectors}
+FUNDING STAGE: ${stage==='any'?'Any':stage}
+${geo}${excl}
+
+PROBLEM STATEMENT / BRIEF:
+${brief}
+
+Recall up to ${count} real companies you know of that are relevant to this brief — draw broadly on your training knowledge, including well-known and lesser-known players, recent and established companies. For each, provide your best recollection of:
+- name: company name
+- website: official website URL (your best knowledge of their domain)
+- description: one-line description of what they do (max 20 words)
+- location: city and country if known, else "Unknown"
+- founder: CEO or founder name if known, else leave blank
+- employees: headcount range if known, else "Unknown"
+- stage: funding stage if known, else "Unknown"
+- funding: total raised if known, else "Undisclosed"
+
+This is a recall step — list everything plausibly relevant, even if you're not 100% certain it's still active. The next step will verify each one against current data.
+Respond ONLY with a raw JSON array, no markdown fences:
+[{"name":"...","website":"...","description":"...","location":"...","founder":"...","employees":"...","stage":"...","funding":"..."}]`;
+
+  try {
+    const text = await callLLM(prompt, 3500);
+    const batch = extractJSON(text);
+    return Array.isArray(batch) ? batch : [];
+  } catch (e) {
+    console.warn('[Scout] Training-data recall failed:', e.message);
+    return [];
+  }
+}
+
+/* ── Step 2: Verify each candidate against the first 8 pages of Google ── */
+async function verifyAgainstGoogle(candidates, sectors, geoClause) {
+  if (!PROXY_MODE || !candidates.length) {
+    // No proxy = no verification capability; pass candidates through unverified
+    return candidates.map(c => ({ ...c, _verified: null, _verifiedUrl: c.website }));
+  }
+
+  const endpoint = PROXY_URL.replace(/\/$/, '') + '/v1/verify-companies';
+  const contextTerms = sectors.split(',')[0].trim();
+  const names = candidates.map(c => c.name).filter(Boolean);
+
+  try {
+    const resp = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ companyNames: names, searchTerms: contextTerms, maxPages: 8 })
+    });
+    const respText = await resp.text();
+    if (!resp.ok) throw new Error(`Verify error ${resp.status}: ${respText.slice(0,200)}`);
+    const d = JSON.parse(respText);
+    const results = d.results || {};
+
+    return candidates.map(c => {
+      const v = results[c.name];
+      if (!v) return { ...c, _verified: null, _verifiedUrl: c.website };
+      return {
+        ...c,
+        website: v.found && v.url ? v.url : c.website,
+        _verified: v.found,
+        _verifiedUrl: v.url,
+        _verifiedSnippet: v.snippet,
+        _live: v.live
+      };
+    });
+  } catch (e) {
+    console.warn('[Scout] Google verification failed, passing candidates through unverified:', e.message);
+    return candidates.map(c => ({ ...c, _verified: null, _verifiedUrl: c.website }));
+  }
+}
+
+async function runSearchAgent(sectors, brief, stage, totalWebCount, geoClause, excludeNames) {
+  // Step 1: Recall broadly from LLM training knowledge
+  setStatus('<div class="progress-steps"><span class="ps active">Step 1/2 — Recalling candidates from training knowledge…</span><span class="ps">Step 2: Google verification</span></div>', true);
+  // Ask for more than needed since some will fail verification
+  const recallCount = Math.min(totalWebCount * 3, 60);
+  const candidates = await recallFromTrainingData(sectors, brief, stage, geoClause, recallCount, excludeNames);
+  console.log(`[Scout] Step 1 recalled ${candidates.length} candidates from training data`);
+
+  if (!candidates.length) {
+    return { discovered: [], diagnostics: { zeroResultQueries: 1, searchErrors: 0, totalQueries: 1, step1Failed: true } };
+  }
+
+  // Dedupe candidates by name before verification (LLM sometimes repeats)
+  const seenInBatch = new Set();
+  const uniqueCandidates = candidates.filter(c => {
+    const n = (c.name||'').toLowerCase().trim();
+    if (!n || seenInBatch.has(n) || excludeNames.includes(n)) return false;
+    seenInBatch.add(n);
+    return true;
+  });
+
+  // Step 2: Verify each candidate against first 8 pages of Google
+  setStatus(`<div class="progress-steps"><span class="ps done">Step 1: ${uniqueCandidates.length} candidates recalled</span><span class="ps active">Step 2/2 — Verifying against Google (up to 8 pages each)…</span></div>`, true);
+  const verified = await verifyAgainstGoogle(uniqueCandidates, sectors, geoClause);
+
+  // Keep only candidates that were found on Google (or skip verification if proxy unavailable)
+  const confirmed = verified.filter(c => c._verified !== false);
+  const rejected = verified.length - confirmed.length;
+
+  console.log(`[Scout] Step 2 verified ${confirmed.length}/${verified.length} candidates (${rejected} rejected as not found on Google)`);
+
+  const finalResults = confirmed.slice(0, totalWebCount).map(c => {
+    const { _verified, _verifiedUrl, _verifiedSnippet, _live, ...clean } = c;
+    return { ...clean, _source: 'web', _googleVerified: _verified === true, _live };
+  });
+
+  return {
+    discovered: finalResults,
+    diagnostics: {
+      zeroResultQueries: finalResults.length ? 0 : 1,
+      searchErrors: 0,
+      totalQueries: 1,
+      step1Count: candidates.length,
+      step2Confirmed: confirmed.length,
+      step2Rejected: rejected
+    }
+  };
+}
+
+/* ═══════════════════════════════════════════
+   AGENT 2 — SCORING AGENT
+   Goal: evaluate each startup against brief
+═══════════════════════════════════════════ */
+function buildDeepScoringPrompt(startup, brief, pageContent, isLive) {
+  return `You are a startup SCORING AGENT performing rigorous keyword AND semantic technical evaluation. Be CRITICAL and SKEPTICAL — most companies are NOT a strong fit. Only assign high scores when there is clear, specific evidence.
+
+PROBLEM STATEMENT (what the user needs solved):
+${brief}
+
+COMPANY TO EVALUATE: ${startup.name}
+Website: ${startup.website}
+Website status: ${isLive === null ? 'unknown' : isLive ? 'LIVE and reachable' : 'NOT REACHABLE — likely inactive/defunct'}
+Known description: ${startup.description || 'none'}
+How this company was found: ${startup._googleVerified ? 'recalled from training data, confirmed via Google search' : 'recalled from training data'}
+
+ACTUAL PRODUCT/FEATURE PAGE CONTENT (real content fetched from their website):
+"""
+${pageContent || '(No page content could be retrieved — website may be down or blocked crawling)'}
+"""
+
+YOUR TASK — perform BOTH checks below, do not skip either:
+
+CHECK 1 — KEYWORD/CAPABILITY MATCH:
+List the specific capabilities, features, or technical terms the problem statement requires (e.g. specific workflows, specific data types, specific integrations, specific user roles). Then check the actual page content for explicit evidence of each — do not assume a capability exists just because the company is in a related space.
+
+CHECK 2 — SEMANTIC FIT:
+Beyond keyword matching, does the company's actual technical approach (architecture, automation level, target user) genuinely solve the underlying problem the user described — or does it just sound similar on the surface?
+
+ACTIVITY CHECK: If the website is unreachable or the page content suggests the company is defunct/pivoted/acquired, this overrides everything else — score 1.
+
+Assign a fit score based on BOTH checks combined:
+- 5 = Strong keyword match AND strong semantic fit — their specific features directly solve the stated problem
+- 4 = Good keyword match with solid semantic fit — most required capabilities are explicitly present
+- 3 = Partial keyword match OR good semantic fit but missing some explicit capabilities — would need verification/adaptation
+- 2 = Weak match on both checks — superficially related but no explicit evidence of fit
+- 1 = No meaningful match, OR website unreachable, OR insufficient evidence to support any higher score
+
+Be honest if evidence is thin — do not inflate scores to be agreeable. If the page content doesn't clearly support a capability, do not assume it.
+
+Respond ONLY with a raw JSON object, no markdown:
+{"score":4,"product_details":"3-4 sentences: what their actual product/technology does based on the real page content, which specific capabilities matched or didn't match the brief's requirements, and your overall fit verdict."}`;
+}
+
+async function runScoringAgent(startups, brief, batchLabel) {
+  let scored = [];
+
+  for (let i = 0; i < startups.length; i++) {
+    const s = startups[i];
+    setStatus(`<div class="progress-steps"><span class="ps done">Search Agent</span><span class="ps done">Discovered ${startups.length} startups</span><span class="ps active">Scoring Agent — analysing ${i+1}/${startups.length}: ${s.name}…</span></div>`, true);
+
+    try {
+      let text, isLive = null;
+      if (PROXY_MODE) {
+        // Use grounded search to fetch the company's own site content
+        const endpoint = PROXY_URL.replace(/\/$/, '') + '/v1/search-and-complete';
+        const cleanInstruction = `You are scoring this company against a problem statement. The real, current page content for this company will be provided to you as search results below — use that as your source of truth for what their product actually does.
+
+PROBLEM STATEMENT:
+${brief}
+
+COMPANY: ${s.name}
+Website: ${s.website}
+Known description: ${s.description || 'none'}
+How this company was found: ${s._googleVerified ? 'recalled from training data, confirmed via Google search' : 'recalled from training data'}
+
+Perform a rigorous, skeptical evaluation:
+1. KEYWORD/CAPABILITY MATCH — list specific capabilities the problem statement requires, then check the real page content below for explicit evidence of each.
+2. SEMANTIC FIT — does their actual technical approach genuinely solve the underlying problem, not just sound similar?
+3. ACTIVITY CHECK — if a source below shows "Live: NO" for their own website, or page content suggests the company is defunct/acquired/pivoted, score 1.
+
+Score 1-5: 5=strong keyword match AND strong semantic fit, 4=good match on most capabilities, 3=partial match or needs adaptation, 2=weak/superficial match, 1=no real match or inactive company. Do not inflate scores — be honest if evidence is thin.
+
+Respond ONLY with a raw JSON object, no markdown:
+{"score":4,"product_details":"3-4 sentences: what their product does based on real page content, which capabilities matched the brief or didn't, and your fit verdict."}`;
+
+        const resp = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: `${s.name} ${s.website || ''} product features`,
+            instruction: cleanInstruction,
+            num_results: 4,
+            fetch_pages: true,
+            max_tokens: 600
+          })
+        });
+        const respText = await resp.text();
+        if (resp.ok) {
+          const d = JSON.parse(respText);
+          text = d.choices?.[0]?.message?.content || '';
+          if (d.sources && d.sources.length) {
+            isLive = d.sources.some(src => src.live === true) ? true : (d.sources.every(src => src.live === false) ? false : null);
+          }
+        } else {
+          text = await callLLM(buildDeepScoringPrompt(s, brief, s.description, null), 600);
+        }
+      } else {
+        text = await callLLM(buildDeepScoringPrompt(s, brief, s.description, null), 600);
+      }
+
+      const result = extractJSON(text);
+      scored.push({
+        ...s,
+        score: result?.score || 3,
+        product_details: result?.product_details || s.description || ''
+      });
+    } catch (e) {
+      console.warn(`[Scout] Scoring failed for ${s.name}:`, e.message);
+      scored.push({ ...s, score: 3, product_details: s.description || '' });
+    }
+  }
+  return scored;
+}
+
+/* ── Main scouting flow ── */
+async function runScouting() {
+  const sectors = document.getElementById('sectors').value.trim();
+  const brief = document.getElementById('brief').value.trim();
+  const stage = document.getElementById('stage').value;
+  const totalCount = parseInt(document.getElementById('count').value);
+  const sortBy = document.getElementById('sortBy').value;
+  const geoClause = geoList.length ? geoList.join(', ') : 'Global';
+
+  hideError();
+  if (!sectors && !uploadedRows.length) { showError('Please fill in Sectors or upload a file with startups.'); return; }
+  if (!brief) { showError('Please fill in the Problem statement / investment thesis.'); return; }
+  const cfg = getLLMConfig();
+  if (!PROXY_MODE && !cfg.key) { showError('No API key configured. Go to ⚙ LLM Settings and enter your key, then save.'); switchTab('llm'); return; }
+
+  const btn = document.getElementById('scoutBtn');
+  btn.disabled = true;
+  document.getElementById('resultsSection').style.display = 'none';
+  document.getElementById('summarySection').style.display = 'none';
+
+  let allDiscovered = [];
+  let excludeNames = getMemoryNames();
+  const activeKeys = getActiveKeys();
+  const usedSources = new Set();
+
+  try {
+    /* ── Phase 1: Collect candidates from all sources ── */
+
+    // 1a. File-uploaded startups (already identified — go straight to scoring)
+    if (uploadedRows.length) {
+      setStatus('<div class="progress-steps"><span class="ps active">Reading uploaded file…</span><span class="ps">Search Agent</span><span class="ps">Scoring Agent</span></div>', true);
+      const fileStartups = getFileStartups().filter(s=>!excludeNames.includes(s.name.toLowerCase()));
+      if (fileStartups.length) {
+        fileStartups.forEach(s=>s._source='file');
+        allDiscovered = [...allDiscovered, ...fileStartups];
+        excludeNames = [...excludeNames, ...fileStartups.map(s=>s.name.toLowerCase())];
+        usedSources.add('file');
+      }
+    }
+
+    // 1b. Crunchbase
+    if (activeKeys.crunchbase && sectors) {
+      setStatus('<div class="progress-steps"><span class="ps active">Search Agent — querying Crunchbase…</span><span class="ps">Scoring Agent</span></div>', true);
+      const cb = await queryCrunchbase(activeKeys.crunchbase, sectors, geoClause, excludeNames);
+      if (cb.length) {
+        allDiscovered = [...allDiscovered, ...cb];
+        excludeNames = [...excludeNames, ...cb.map(s=>s.name.toLowerCase())];
+        usedSources.add('crunchbase');
+      }
+    }
+
+    // 1c. Tracxn
+    if (activeKeys.tracxn && sectors) {
+      setStatus('<div class="progress-steps"><span class="ps active">Search Agent — querying Tracxn…</span><span class="ps">Scoring Agent</span></div>', true);
+      const tx = await queryTracxn(activeKeys.tracxn, sectors, geoClause);
+      if (tx.length) {
+        const fresh = tx.filter(s=>!excludeNames.includes(s.name.toLowerCase()));
+        allDiscovered = [...allDiscovered, ...fresh];
+        excludeNames = [...excludeNames, ...fresh.map(s=>s.name.toLowerCase())];
+        usedSources.add('tracxn');
+      }
+    }
+
+    // 1d. Web Search Agent — fill up to totalCount (two-step: recall + verify)
+    const webNeeded = Math.max(0, totalCount - allDiscovered.length);
+    if (webNeeded > 0) {
+      const { discovered: webResults, diagnostics } = await runSearchAgent(sectors, brief, stage, webNeeded, geoClause, excludeNames);
+      allDiscovered = [...allDiscovered, ...webResults];
+      if (webResults.length) usedSources.add('web');
+
+      if (!webResults.length && !allDiscovered.length) {
+        const diag = diagnostics || {};
+        let reason = 'No companies matched.';
+        if (diag.step1Failed) {
+          reason = 'Step 1 (training-data recall) failed to produce any candidates. Check your LLM connection.';
+        } else if (diag.step2Confirmed === 0 && diag.step1Count > 0) {
+          reason = `Step 1 recalled ${diag.step1Count} candidates from training data, but none were verifiable on Google (checked up to 8 pages each). This can happen if company names were too generic or outdated. Try a more specific brief.`;
+        }
+        throw new Error(reason);
+      }
+    }
+
+    if (!allDiscovered.length) throw new Error('No startups discovered. Try broadening your sectors or geography.');
+
+    /* ── Phase 2: Scoring Agent evaluates all candidates ── */
+    setStatus(`<div class="progress-steps"><span class="ps done">Search Agent — ${allDiscovered.length} startups found</span><span class="ps active">Scoring Agent — evaluating fit…</span></div>`, true);
+    const allScored = await runScoringAgent(allDiscovered, brief, '');
+
+    /* ── Phase 3: Sort & finalise ── */
+    // Filter out companies scored 1 that the scoring agent flagged as inactive/unverifiable
+    const inactive = allScored.filter(s => s.score === 1 && (s.product_details||'').toLowerCase().match(/inactive|defunct|shut down|acquired|no longer|unavailable|unverifiable|dead|closed/));
+    const activeScored = allScored.filter(s => !inactive.includes(s));
+
+    if (sortBy==='funding') activeScored.sort((a,b)=>parseFunding(b.funding)-parseFunding(a.funding));
+    else if (sortBy==='employees') activeScored.sort((a,b)=>parseEmp(b.employees)-parseEmp(a.employees));
+    else activeScored.sort((a,b)=>b.score-a.score);
+
+    currentResults = activeScored;
+    memory = [...memory, ...activeScored.map(s=>({name:s.name,website:s.website,ts:Date.now()}))];
+    saveMemory();
+
+    hideStatus();
+    renderSummary(activeScored, geoClause, usedSources, inactive.length);
+    renderResults(geoClause);
+    renderMemory();
+    document.getElementById('newBriefBtn').style.display = 'inline-flex';
+    document.getElementById('clearMemBtn').style.display = 'inline-flex';
+
+  } catch(err) {
+    hideStatus();
+    showError(err.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+
+/* ── Render summary ── */
+function renderSummary(results, geoClause, usedSources, removedCount) {
+  const counts = [5,4,3,2,1].map(n=>results.filter(r=>r.score===n).length);
+  const labels = ['Excellent fit (5)','Strong fit (4)','Moderate fit (3)','Weak fit (2)','Poor fit (1)'];
+  const colorCls = ['sc-5','sc-4','sc-3','sc-2','sc-1'];
+
+  const grid = document.getElementById('summaryGrid');
+  grid.innerHTML = `<div class="summary-card sc-total"><div class="summary-num">${results.length}</div><div class="summary-lbl">Total scouted</div></div>`
+    + counts.map((c,i)=>`<div class="summary-card ${colorCls[i]}"><div class="summary-num">${c}</div><div class="summary-lbl">${labels[i]}</div></div>`).join('');
+
+  const srcRow = document.getElementById('sourcesRow');
+  const srcLabels = {web:'Web search', file:`File: ${uploadedFileName}`, crunchbase:'Crunchbase', tracxn:'Tracxn', dealroom:'Dealroom', pitchbook:'PitchBook'};
+  srcRow.innerHTML = [...usedSources].map(s=>`<span class="src-pill ${s==='web'?'web':s==='file'?'file':'api'}">${srcLabels[s]||s}</span>`).join('');
+
+  const topScore = Math.max(...results.map(r=>r.score));
+  const topNames = results.filter(r=>r.score===topScore).slice(0,3).map(r=>r.name).join(', ');
+  const removedNote = removedCount > 0 ? ` ${removedCount} inactive or unverifiable compan${removedCount===1?'y was':'ies were'} automatically removed.` : '';
+  document.getElementById('summaryText').textContent =
+    `Scouted ${results.length} active startups across ${[...usedSources].length} source(s) in ${geoClause}. `+
+    `${counts[0]+counts[1]} startups scored 4 or above, indicating strong potential fit. `+
+    (topNames ? `Top-scoring companies: ${topNames}.` : '')+removedNote;
+
+  document.getElementById('summarySection').style.display = 'block';
+}
+
+/* ── Render results ── */
+function renderResults(geoClause) {
+  document.getElementById('resultsMeta').textContent = `${currentResults.length} startups · ${geoClause}`;
+  document.getElementById('cards').innerHTML = currentResults.map(s => {
+    const sc = Math.max(1,Math.min(5,parseInt(s.score)||3));
+    const srcLabel = {web:'Web',file:'File',crunchbase:'Crunchbase',tracxn:'Tracxn',dealroom:'Dealroom',pitchbook:'PitchBook'}[s._source||'web'];
+    const verifiedBadge = s._googleVerified ? `<span class="pill" style="background:var(--grn-bg);color:var(--grn-t);">✓ Google-verified</span>` : '';
+    return `<div class="result-card">
+      <div class="rc-top">
+        <div style="min-width:0">
+          <div class="rc-name">${s.name||'—'}</div>
+          <a class="rc-url" href="${s.website||'#'}" target="_blank" rel="noopener">${s.website||''} ↗</a>
+        </div>
+        <div style="flex-shrink:0;text-align:center;">
+          <div class="sc-badge b${sc}">${sc}</div>
+          <div class="sc-lbl">${SCORE_LABELS[sc]}</div>
+        </div>
+      </div>
+      <p class="rc-desc">${s.description||''}</p>
+      <div class="pills">
+        <span class="pill pill-geo">${s.location||'—'}</span>
+        <span class="pill">${s.founder||'—'}</span>
+        <span class="pill">${s.employees||'—'} employees</span>
+        <span class="pill">${s.stage||'—'}</span>
+        <span class="pill">${s.funding||'—'}</span>
+        <span class="pill pill-src">${srcLabel}</span>
+        ${verifiedBadge}
+      </div>
+      <div class="product-box">${s.product_details||''}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('resultsSection').style.display = 'block';
+}
+
+/* ── Memory UI ── */
+function renderMemory() {
+  const sec = document.getElementById('memorySection');
+  if (!memory.length) { sec.style.display='none'; return; }
+  sec.style.display='block';
+  document.getElementById('memCount').textContent = memory.length;
+  document.getElementById('memoryList').innerHTML = memory.map((m,i)=>
+    `<div class="mem-item"><span><span class="mem-name">${m.name}</span> — <a href="${m.website}" target="_blank" rel="noopener" style="color:var(--blu-t);font-size:12px;">${m.website}</a></span><button class="del-btn" onclick="removeFromMemory(${i})">✕</button></div>`
+  ).join('');
+}
+function removeFromMemory(i) { memory.splice(i,1); saveMemory(); renderMemory(); }
+function clearMemory() { memory=[]; saveMemory(); renderMemory(); document.getElementById('clearMemBtn').style.display='none'; }
+function startNewBrief() {
+  // Clear results and memory from this run
+  currentResults = [];
+  memory = [];
+  saveMemory();
+  // Clear form fields
+  document.getElementById('sectors').value = '';
+  document.getElementById('brief').value = '';
+  document.getElementById('stage').value = 'any';
+  document.getElementById('count').value = '10';
+  document.getElementById('sortBy').value = 'score';
+  geoList = [];
+  renderGeoTags();
+  // Clear uploaded file
+  clearFile();
+  // Clear brief doc
+  clearBriefDoc();
+  // Hide all result sections
+  document.getElementById('resultsSection').style.display = 'none';
+  document.getElementById('summarySection').style.display = 'none';
+  document.getElementById('memorySection').style.display = 'none';
+  document.getElementById('newBriefBtn').style.display = 'none';
+  document.getElementById('clearMemBtn').style.display = 'none';
+  hideError();
+  // Switch to brief tab and scroll to top
+  switchTab('brief');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function clearResults() { currentResults=[]; document.getElementById('resultsSection').style.display='none'; document.getElementById('summarySection').style.display='none'; document.getElementById('newBriefBtn').style.display='none'; }
+
+/* ── Export ── */
+function getRows() {
+  const h=['Name','Website','Description','Location','Founder / CEO','Employees','Funding Stage','Total Funding','Product Details','Fit Score','Source'];
+  const r=currentResults.map(s=>[s.name,s.website,s.description,s.location,s.founder,s.employees,s.stage,s.funding,s.product_details,s.score,s._source||'web']);
+  return {h,r};
+}
+function copyTSV() {
+  const {h,r}=getRows(); const tsv=[h,...r].map(row=>row.map(v=>String(v||'')).join('\t')).join('\n');
+  navigator.clipboard.writeText(tsv).then(()=>{ const ok=document.getElementById('copyOk'); ok.style.display='inline'; setTimeout(()=>ok.style.display='none',2500); }).catch(()=>downloadCSV());
+}
+function downloadCSV() {
+  const {h,r}=getRows(); const csv=[h,...r].map(row=>row.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='startup_scouting_results.csv'; a.click();
+}
+
+/* ── Init ── */
+loadApiKeys();
+loadLLMSettings();
+renderMemory();
+
+// Hide LLM settings tab in proxy mode — team members don't need to configure anything
+if (PROXY_MODE) {
+  document.querySelectorAll('.tab').forEach(t => {
+    if (t.textContent.includes('LLM')) t.style.display = 'none';
+  });
+  document.getElementById('tab-llm').style.display = 'none';
+  // Show a small banner so users know the tool is ready to use
+  const banner = document.createElement('div');
+  banner.style.cssText = 'background:var(--grn-bg);color:var(--grn-t);border-radius:var(--r);padding:8px 14px;font-size:13px;margin-bottom:1rem;';
+  banner.innerHTML = '✓ Ready to use — no API key required. Fill in your brief and click Scout startups.';
+  document.querySelector('.app').insertBefore(banner, document.querySelector('.tabs'));
+}
+</script>
+</body>
+</html>
